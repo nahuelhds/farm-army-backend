@@ -8,7 +8,10 @@ const Utils = require("./utils");
 const Web3EthContract = require("web3-eth-contract");
 
 const erc20ABI = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, "platforms/pancake/abi/erc20.json"), "utf8")
+  fs.readFileSync(
+    path.resolve(__dirname, "platforms/pancake/abi/erc20.json"),
+    "utf8"
+  )
 );
 const lpAbi = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "lpAbi.json"), "utf8")
@@ -62,12 +65,18 @@ module.exports = class PriceOracle {
   }
 
   async cronInterval() {
-    const lps = (await Promise.all(this.services.getPlatforms().getFunctionAwaits('getLbAddresses'))).flat()
+    const lps = (
+      await Promise.all(
+        this.services.getPlatforms().getFunctionAwaits("getLbAddresses")
+      )
+    ).flat();
     await this.updateTokens();
 
-    await Promise.allSettled(_.chunk(_.uniq(lps), 75).map(chunk => {
-      return this.fetch(chunk);
-    }));
+    await Promise.allSettled(
+      _.chunk(_.uniq(lps), 75).map(chunk => {
+        return this.fetch(chunk);
+      })
+    );
   }
 
   /**
@@ -81,16 +90,22 @@ module.exports = class PriceOracle {
    */
   findPrice(...addressOrTokens) {
     for (let addressOrToken of addressOrTokens) {
-      const price = this.priceCollector.getPrice(addressOrToken)
+      const price = this.priceCollector.getPrice(addressOrToken);
       if (price) {
         return price;
       }
 
       // flip token0 and token1
-      if (!addressOrToken.startsWith('0x') && addressOrToken.includes('-') && addressOrToken.split('-').length === 2) {
+      if (
+        !addressOrToken.startsWith("0x") &&
+        addressOrToken.includes("-") &&
+        addressOrToken.split("-").length === 2
+      ) {
         const [t0, t1] = addressOrToken.split("-");
 
-        const price = this.priceCollector.getPrice(`${t1.toLowerCase()}-${t0.toLowerCase()}`)
+        const price = this.priceCollector.getPrice(
+          `${t1.toLowerCase()}-${t0.toLowerCase()}`
+        );
         if (price) {
           return price;
         }
@@ -101,7 +116,7 @@ module.exports = class PriceOracle {
   }
 
   getAddressPrice(address) {
-    return this.priceCollector.getPrice(address)
+    return this.priceCollector.getPrice(address);
   }
 
   getAllPrices() {
@@ -138,49 +153,52 @@ module.exports = class PriceOracle {
       this.getPancakeswapPrices(),
       this.getCoingeckoPrices(),
       this.getBeefyPrices(),
-      this.updateBDollarPrices(),
-    ])
+      this.updateBDollarPrices()
+    ]);
 
     const addresses = [];
 
-    bPrices.filter(p => p.status === 'fulfilled').forEach(p => {
-      p.value.forEach(item => {
-        if (item.address) {
-          this.priceCollector.add(item.address, item.price);
-          addresses.push(item.address.toLowerCase())
-
-        } else if(item.symbol) {
-          // symbol resolve
-          const address = this.tokenCollector.getAddressBySymbol(item.symbol);
-          if (address) {
-            this.priceCollector.add(address, item.price)
-            addresses.push(address.toLowerCase())
+    bPrices
+      .filter(p => p.status === "fulfilled")
+      .forEach(p => {
+        p.value.forEach(item => {
+          if (item.address) {
+            this.priceCollector.add(item.address, item.price);
+            addresses.push(item.address.toLowerCase());
+          } else if (item.symbol) {
+            // symbol resolve
+            const address = this.tokenCollector.getAddressBySymbol(item.symbol);
+            if (address) {
+              this.priceCollector.add(address, item.price);
+              addresses.push(address.toLowerCase());
+            }
           }
-        }
 
-        if (item.symbol) {
-          this.priceCollector.addForSymbol(item.symbol, item.price)
-        }
-      })
-    })
+          if (item.symbol) {
+            this.priceCollector.addForSymbol(item.symbol, item.price);
+          }
+        });
+      });
 
     this.priceCollector.save();
 
     const results = await Promise.allSettled([
       this.updateTokensVswap(),
       this.updateTokensBakery(),
-      this.inchPricesAsBnb(this.priceCollector.getPrice('bnb')),
-      this.updateHyperswap(this.priceCollector.getPrice('bnb')),
+      this.inchPricesAsBnb(this.priceCollector.getPrice("bnb")),
+      this.updateHyperswap(this.priceCollector.getPrice("bnb"))
     ]);
 
-    results.filter(p => p.status === 'fulfilled').forEach(p => {
-      p.value.forEach(item => {
-        if (item.address && !addresses.includes(item.address.toLowerCase())) {
-          this.priceCollector.add(item.address, item.price);
-          this.priceCollector.addForSymbol(item.symbol, item.price);
-        }
-      })
-    })
+    results
+      .filter(p => p.status === "fulfilled")
+      .forEach(p => {
+        p.value.forEach(item => {
+          if (item.address && !addresses.includes(item.address.toLowerCase())) {
+            this.priceCollector.add(item.address, item.price);
+            this.priceCollector.addForSymbol(item.symbol, item.price);
+          }
+        });
+      });
 
     await this.tokenCollector.save();
   }
@@ -190,22 +208,29 @@ module.exports = class PriceOracle {
 
     // most useful
     try {
-      const pancakeTokens = await this.jsonRequest("https://api.pancakeswap.com/api/v1/price", {
-        rejectUnauthorized: false,
-      });
+      const pancakeTokens = await this.jsonRequest(
+        "https://api.pancakeswap.com/api/v1/price",
+        {
+          rejectUnauthorized: false
+        }
+      );
       for (const [key, value] of Object.entries(pancakeTokens.prices)) {
-        if (key.toLowerCase() === 'banana' || key === 'cCAKE' || key.length > 15) {
-          continue
+        if (
+          key.toLowerCase() === "banana" ||
+          key === "cCAKE" ||
+          key.length > 15
+        ) {
+          continue;
         }
 
         prices.push({
           symbol: key.toLowerCase(),
-          source: 'pancakeswap',
+          source: "pancakeswap",
           price: value
         });
       }
     } catch (e) {
-      console.log('error https://api.pancakeswap.com/api/v1/price', e.message)
+      console.log("error https://api.pancakeswap.com/api/v1/price", e.message);
     }
 
     return prices;
@@ -213,25 +238,31 @@ module.exports = class PriceOracle {
 
   async getBeefyPrices() {
     const results = await Promise.allSettled([
-      this.jsonRequest('https://api.beefy.finance/prices'),
-      this.jsonRequest('https://api.beefy.finance/lps'),
+      this.jsonRequest("https://api.beefy.finance/prices"),
+      this.jsonRequest("https://api.beefy.finance/lps")
     ]);
 
     const prices = [];
 
-    results.filter(p => p.status === 'fulfilled').forEach(p => {
-      for (const [symbol, price] of Object.entries(p.value)) {
-        if (symbol.toLowerCase() === 'btcst' || price > 500000 || price < 0.00000001) {
-          continue;
-        }
+    results
+      .filter(p => p.status === "fulfilled")
+      .forEach(p => {
+        for (const [symbol, price] of Object.entries(p.value)) {
+          if (
+            symbol.toLowerCase() === "btcst" ||
+            price > 500000 ||
+            price < 0.00000001
+          ) {
+            continue;
+          }
 
-        prices.push({
-          symbol: symbol.toLowerCase(),
-          source: 'beefy',
-          price: price
-        });
-      }
-    })
+          prices.push({
+            symbol: symbol.toLowerCase(),
+            source: "beefy",
+            price: price
+          });
+        }
+      });
 
     return prices;
   }
@@ -239,18 +270,22 @@ module.exports = class PriceOracle {
   async getCoingeckoPrices() {
     // extra some important one
     const maps = {
-      'bearn-fi': 'bfi',
-      'auto': 'auto',
-      'pancakeswap-token': 'cake',
-      'julswap': 'jul',
-      'bakerytoken': 'bake',
-      'burger-swap': 'burger',
-      'kebab-token': 'kebab',
-      'goose-finance': 'egg',
-      'binancecoin': 'bnb',
+      "bearn-fi": "bfi",
+      auto: "auto",
+      "pancakeswap-token": "cake",
+      julswap: "jul",
+      bakerytoken: "bake",
+      "burger-swap": "burger",
+      "kebab-token": "kebab",
+      "goose-finance": "egg",
+      binancecoin: "bnb"
     };
 
-    const coingeckoTokens = await this.jsonRequest(`https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(maps).join(',')}&vs_currencies=usd`);
+    const coingeckoTokens = await this.jsonRequest(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(
+        maps
+      ).join(",")}&vs_currencies=usd`
+    );
 
     const prices = [];
 
@@ -262,7 +297,7 @@ module.exports = class PriceOracle {
       if (maps[key.toLowerCase()]) {
         prices.push({
           symbol: maps[key.toLowerCase()],
-          source: 'coingecko',
+          source: "coingecko",
           price: value.usd
         });
       }
@@ -272,20 +307,36 @@ module.exports = class PriceOracle {
   }
 
   async updateBDollarPrices() {
-    const pricesCalls = (await Promise.allSettled([
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=BDO'),
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=bBDO'),
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=sBDO'),
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=bpDOT'),
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=sBFI'),
-      this.jsonRequest('https://api.bdollar.fi/api/bdollar/get-token-info?token=BFI'),
-    ])).filter(r => r.value && r.value.data).map(r => r.value);
+    const pricesCalls = (
+      await Promise.allSettled([
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=BDO"
+        ),
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=bBDO"
+        ),
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=sBDO"
+        ),
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=bpDOT"
+        ),
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=sBFI"
+        ),
+        this.jsonRequest(
+          "https://api.bdollar.fi/api/bdollar/get-token-info?token=BFI"
+        )
+      ])
+    )
+      .filter(r => r.value && r.value.data)
+      .map(r => r.value);
 
     const prices = [];
     [...pricesCalls].forEach(p => {
       let item = {
         symbol: p.data.token.toLowerCase(),
-        source: 'bdollar',
+        source: "bdollar",
         price: p.data.price
       };
 
@@ -370,8 +421,8 @@ module.exports = class PriceOracle {
       this.tokenCollector.add({
         address: v._token,
         symbol: v.symbol.toLowerCase(),
-        decimals: v.decimals,
-      })
+        decimals: v.decimals
+      });
     });
 
     Object.values(managedLp).forEach(c => {
@@ -388,37 +439,52 @@ module.exports = class PriceOracle {
         {
           address: c.token0.toLowerCase(),
           symbol: token0.symbol.toLowerCase(),
-          amount: (c.reserve0 * 10 ** (c.decimals - token0.decimals)) / c.totalSupply
+          amount:
+            (c.reserve0 * 10 ** (c.decimals - token0.decimals)) / c.totalSupply
         },
         {
           address: c.token1.toLowerCase(),
           symbol: token1.symbol.toLowerCase(),
-          amount: (c.reserve1 * 10 ** (c.decimals - token1.decimals)) / c.totalSupply
+          amount:
+            (c.reserve1 * 10 ** (c.decimals - token1.decimals)) / c.totalSupply
         }
       ]);
 
-      this.lpTokenCollector.add(c.address, pricesLpAddressMap[c.address.toLowerCase()]);
+      this.lpTokenCollector.add(
+        c.address,
+        pricesLpAddressMap[c.address.toLowerCase()]
+      );
 
       if (!token0Price || !token1Price) {
-        console.log("Missing price:", token0.symbol.toLowerCase(), token0Price, token1.symbol.toLowerCase(), token1Price);
+        console.log(
+          "Missing price:",
+          token0.symbol.toLowerCase(),
+          token0Price,
+          token1.symbol.toLowerCase(),
+          token1Price
+        );
 
         return;
       }
 
-      let x0 = reserve0.toNumber() / (10 ** token0.decimals);
-      let x1 = reserve1.toNumber() / (10 ** token1.decimals);
+      let x0 = reserve0.toNumber() / 10 ** token0.decimals;
+      let x1 = reserve1.toNumber() / 10 ** token1.decimals;
 
-      let x0p = x0 * token0Price
-      let x1p = x1 * token1Price
+      let x0p = x0 * token0Price;
+      let x1p = x1 * token1Price;
 
-      const number = (x0p + x1p) / c.totalSupply * (10 ** c.decimals);
+      const number = ((x0p + x1p) / c.totalSupply) * 10 ** c.decimals;
       if (number <= 0) {
-        console.log("Missing lp price:", token0.symbol.toLowerCase(), token1.symbol.toLowerCase());
+        console.log(
+          "Missing lp price:",
+          token0.symbol.toLowerCase(),
+          token1.symbol.toLowerCase()
+        );
 
         return;
       }
 
-      this.priceCollector.add(c.address, number)
+      this.priceCollector.add(c.address, number);
     });
 
     this.lpTokenCollector.save();
@@ -428,7 +494,9 @@ module.exports = class PriceOracle {
   async tokenMaps() {
     const tokens = {};
 
-    Object.values(await this.jsonRequest('https://tokens.1inch.exchange/v1.1/chain-56')).forEach(t => {
+    Object.values(
+      await this.jsonRequest("https://tokens.1inch.exchange/v1.1/chain-56")
+    ).forEach(t => {
       if (t.symbol && t.address && t.decimals) {
         const symbol = t.symbol.toLowerCase();
         tokens[t.address.toLowerCase()] = symbol;
@@ -436,10 +504,10 @@ module.exports = class PriceOracle {
         this.tokenCollector.add({
           symbol: t.symbol,
           address: t.address,
-          decimals: parseInt(t.decimals),
-        })
+          decimals: parseInt(t.decimals)
+        });
       }
-    })
+    });
 
     const foo = await fetch(
       "https://api.bscgraph.org/subgraphs/name/cakeswap",
@@ -459,11 +527,11 @@ module.exports = class PriceOracle {
       }
     );
 
-    let result
+    let result;
     try {
       result = await foo.json();
     } catch (e) {
-      console.error('pancake price error', e.message)
+      console.error("pancake price error", e.message);
       return [];
     }
 
@@ -474,8 +542,8 @@ module.exports = class PriceOracle {
       this.tokenCollector.add({
         symbol: t.symbol,
         address: t.id,
-        decimals: parseInt(t.decimals),
-      })
+        decimals: parseInt(t.decimals)
+      });
     });
 
     return tokens;
@@ -487,27 +555,32 @@ module.exports = class PriceOracle {
     }
 
     let [tokens, pricesMap] = await Promise.all([
-      this.jsonRequest('https://tokens.1inch.exchange/v1.1/chain-56'),
-      this.jsonRequest('https://token-prices.1inch.exchange/v1.1/56'),
+      this.jsonRequest("https://tokens.1inch.exchange/v1.1/chain-56"),
+      this.jsonRequest("https://token-prices.1inch.exchange/v1.1/56")
     ]);
 
     const prices = [];
 
     for (const [key, value] of Object.entries(pricesMap)) {
-      if (tokens[key] && tokens[key].decimals && tokens[key].symbol && !['bnb', 'wbnb'].includes(tokens[key].symbol.toLowerCase())) {
+      if (
+        tokens[key] &&
+        tokens[key].decimals &&
+        tokens[key].symbol &&
+        !["bnb", "wbnb"].includes(tokens[key].symbol.toLowerCase())
+      ) {
         const price = (value / 10 ** 18) * bnbPrice;
 
         if (price > 1000000 || price < 0.0000000001) {
           // skipping invalid prices
           // console.log('1inch price issues:', tokens[key].symbol.toLowerCase(), price)
-          continue
+          continue;
         }
 
         prices.push({
           address: key,
           symbol: tokens[key].symbol.toLowerCase(),
           price: price,
-          source: '1inch',
+          source: "1inch"
         });
       }
     }
@@ -541,11 +614,11 @@ module.exports = class PriceOracle {
       this.tokenCollector.add({
         symbol: t.symbol,
         address: t.id,
-        decimals: parseInt(t.decimals),
-      })
+        decimals: parseInt(t.decimals)
+      });
 
       // invalid
-      if (t.symbol.toLowerCase() === 'seeds') {
+      if (t.symbol.toLowerCase() === "seeds") {
         return;
       }
 
@@ -554,7 +627,7 @@ module.exports = class PriceOracle {
           address: t.id,
           symbol: t.symbol.toLowerCase(),
           price: t.priceUSD,
-          source: 'vswap',
+          source: "vswap"
         });
       }
     });
@@ -592,8 +665,8 @@ module.exports = class PriceOracle {
       this.tokenCollector.add({
         symbol: t.symbol,
         address: t.id,
-        decimals: parseInt(t.decimals),
-      })
+        decimals: parseInt(t.decimals)
+      });
 
       if (t.tokenDayData && t.tokenDayData[0] && t.tokenDayData[0].priceUSD) {
         const { priceUSD } = t.tokenDayData[0];
@@ -603,7 +676,7 @@ module.exports = class PriceOracle {
             address: t.id,
             symbol: t.symbol.toLowerCase(),
             price: priceUSD,
-            source: 'bakery',
+            source: "bakery"
           });
         }
       }
@@ -614,36 +687,51 @@ module.exports = class PriceOracle {
 
   async updateHyperswap(bnbPrice) {
     if (!bnbPrice) {
-      throw Error('Invalid bnb price')
+      throw Error("Invalid bnb price");
     }
 
-    const foo = await fetch("https://subgraph.hyperswap.fi/subgraphs/name/theothug/swap-subgraph", {
-      "headers": {
-        "accept": "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        "content-type": "application/json",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "cross-site"
-      },
-      "referrer": "https://info.hyperjump.fi/",
-      "referrerPolicy": "strict-origin-when-cross-origin",
-      "body": "{\"operationName\":\"tokens\",\"variables\":{},\"query\":\"fragment TokenFields on Token {\\n  id\\n  name\\n  symbol\\n decimals\\n derivedBNB\\n  tradeVolume\\n  tradeVolumeUSD\\n  untrackedVolumeUSD\\n  totalLiquidity\\n  txCount\\n  __typename\\n}\\n\\nquery tokens {\\n  tokens(first: 200, orderBy: tradeVolumeUSD, orderDirection: desc) {\\n    ...TokenFields\\n    __typename\\n  }\\n}\\n\"}",
-      "method": "POST",
-      "mode": "cors"
-    });
+    const foo = await fetch(
+      "https://subgraph.hyperswap.fi/subgraphs/name/theothug/swap-subgraph",
+      {
+        headers: {
+          accept: "*/*",
+          "accept-language": "en-US,en;q=0.9",
+          "content-type": "application/json",
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "cross-site"
+        },
+        referrer: "https://info.hyperjump.fi/",
+        referrerPolicy: "strict-origin-when-cross-origin",
+        body:
+          '{"operationName":"tokens","variables":{},"query":"fragment TokenFields on Token {\\n  id\\n  name\\n  symbol\\n decimals\\n derivedBNB\\n  tradeVolume\\n  tradeVolumeUSD\\n  untrackedVolumeUSD\\n  totalLiquidity\\n  txCount\\n  __typename\\n}\\n\\nquery tokens {\\n  tokens(first: 200, orderBy: tradeVolumeUSD, orderDirection: desc) {\\n    ...TokenFields\\n    __typename\\n  }\\n}\\n"}',
+        method: "POST",
+        mode: "cors"
+      }
+    );
 
     const result = await foo.json();
 
     const prices = [];
     result.data.tokens
-      .filter(t => ['alloy', 'drugs', 'hypr', 'thugs', 'guns', 'smoke', 'cred', 'dvt'].includes(t.symbol.toLowerCase()))
+      .filter(t =>
+        [
+          "alloy",
+          "drugs",
+          "hypr",
+          "thugs",
+          "guns",
+          "smoke",
+          "cred",
+          "dvt"
+        ].includes(t.symbol.toLowerCase())
+      )
       .forEach(t => {
         this.tokenCollector.add({
           symbol: t.symbol,
           address: t.id,
-          decimals: parseInt(t.decimals),
-        })
+          decimals: parseInt(t.decimals)
+        });
 
         // risky price catch; only what we really need: BHC token is really crazy!
         if (t.derivedBNB) {
@@ -651,7 +739,7 @@ module.exports = class PriceOracle {
             address: t.id,
             symbol: t.symbol.toLowerCase(),
             price: t.derivedBNB * bnbPrice,
-            source: 'hyperswap',
+            source: "hyperswap"
           });
         }
       });
@@ -660,15 +748,16 @@ module.exports = class PriceOracle {
   }
 
   getLpSplits(farm, yieldFarm) {
-    let isLpSplitFarm = farm.extra
-        && farm.extra.lpAddress
-        && yieldFarm.deposit
-        && yieldFarm.deposit.amount;
+    let isLpSplitFarm =
+      farm.extra &&
+      farm.extra.lpAddress &&
+      yieldFarm.deposit &&
+      yieldFarm.deposit.amount;
 
     if (isLpSplitFarm) {
       const lpSplitAddressPrices = this.getLpToken0Token1SplitAmount(
-          farm.extra.lpAddress,
-          yieldFarm.deposit.amount
+        farm.extra.lpAddress,
+        yieldFarm.deposit.amount
       );
 
       if (lpSplitAddressPrices) {

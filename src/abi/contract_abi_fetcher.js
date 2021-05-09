@@ -30,10 +30,18 @@ module.exports = class ContractAbiFetcher {
     );
 
     const parse = JSON.parse(text.body);
-    const abi = JSON.parse(parse.result);
-
-    await this.cacheManager.set(cacheKey, abi, { ttl: 60 * 24 * 7 });
-
-    return abi;
+    let abi;
+    try {
+      abi = JSON.parse(parse.result);
+      await this.cacheManager.set(cacheKey, abi, { ttl: 60 * 24 * 7 });
+      return abi;
+    } catch (e) {
+      console.error(
+        `An error occurred while parsing the result for ABI contract address ${address}. Result:`,
+        parse.result,
+        e
+      );
+    }
+    return null;
   }
 };

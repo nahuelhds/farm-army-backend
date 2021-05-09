@@ -58,7 +58,7 @@ module.exports = class AddressTransactions {
     const map = {};
     items.flat().forEach(i => {
       if (i.extra && i.extra.transactionAddress && i.extra.transactionToken) {
-        let item = {
+        const item = {
           id: i.id,
           provider: i.provider,
           name: i.name
@@ -69,71 +69,85 @@ module.exports = class AddressTransactions {
         }
 
         map[
-          i.extra.transactionAddress.toLowerCase() +
-            "-" +
-            i.extra.transactionToken.toLowerCase()
+          `${i.extra.transactionAddress.toLowerCase()}-${i.extra.transactionToken.toLowerCase()}`
         ] = item;
       }
     });
 
-    const transactions = response.result
-      .filter(t => t.value && t.value > 0 && t.tokenDecimal)
-      .map(async t => {
-        let amount = t.value / 10 ** t.tokenDecimal;
+    const transactions = await Promise.all(
+      response.result
+        .filter(t => t.value && t.value > 0 && t.tokenDecimal)
+        .map(async t => {
+          let amount = t.value / 10 ** t.tokenDecimal;
 
-        if (t.from.toLowerCase() === address.toLowerCase()) {
-          amount = -amount;
-        }
+          // Aparentemente se agrupan por hash las tx
+          if (t.from.toLowerCase() === address.toLowerCase()) {
+            amount = -amount;
+          }
 
-        let symbol = t.tokenSymbol.toLowerCase();
+          let symbol = t.tokenSymbol.toLowerCase();
 
-        const singleSymbol = this.liquidityTokenCollector.getSymbolNames(
-          t.contractAddress
-        );
-        if (singleSymbol) {
-          symbol = singleSymbol;
-        }
-
-        const lpSymbol = this.liquidityTokenCollector.getSymbolNames(
-          t.contractAddress
-        );
-        if (lpSymbol) {
-          symbol = lpSymbol;
-        }
-
-        let newVar = {
-          timestamp: parseInt(t.timeStamp, 10),
-          amount: amount,
-          hash: t.hash,
-          symbol: symbol.toLowerCase(),
-          tokenName: t.tokenName,
-          tokenAddress: t.contractAddress,
-          from: t.from,
-          to: t.to
-        };
-
-        let target = t.from.toLowerCase();
-        if (target === address.toLowerCase()) {
-          target = t.to.toLowerCase();
-        }
-
-        if (map[target + "-" + t.contractAddress.toLowerCase()]) {
-          newVar.vault = map[target + "-" + t.contractAddress.toLowerCase()];
-        }
-
-        if (t.contractAddress) {
-          const currentPrice = this.priceCollector.getPrice(t.contractAddress);
-          const price = await this.priceHistory.getPrice(
-            newVar.timestamp,
+          const singleSymbol = this.liquidityTokenCollector.getSymbolNames(
             t.contractAddress
           );
-          if (currentPrice) {
-            newVar.usd_current = newVar.amount * currentPrice;
+          if (singleSymbol) {
+            symbol = singleSymbol;
           }
-        }
 
-        return newVar;
-      });
+          const lpSymbol = this.liquidityTokenCollector.getSymbolNames(
+            t.contractAddress
+          );
+          if (lpSymbol) {
+            symbol = lpSymbol;
+          }
+
+          const newVar = {
+            timestamp: parseInt(t.timeStamp, 10),
+            amount: amount,
+            hash: t.hash,
+            symbol: symbol.toLowerCase(),
+            tokenName: t.tokenName,
+            tokenAddress: t.contractAddress,
+            from: t.from,
+            to: t.to
+          };
+
+          let target = t.from.toLowerCase();
+          if (target === address.toLowerCase()) {
+            target = t.to.toLowerCase();
+          }
+
+          if (map[`${target}-${t.contractAddress.toLowerCase()}`]) {
+            newVar.vault = map[`${target}-${t.contractAddress.toLowerCase()}`];
+          }
+
+          if (t.contractAddress) {
+            const currentPrice = this.priceCollector.getPrice(
+              t.contractAddress
+            );
+            if (currentPrice) {
+              newVar.usd = newVar.amount * currentPrice;
+            }
+
+            const coin = {
+              tokenName: t.tokenName,
+              symbol: symbol,
+              contractAddress: t.contractAddress
+            };
+
+            const price = await this.priceHistory.getPriceFromSymbol(
+              newVar.timestamp,
+              coin,
+              t
+            );
+            if (price) {
+              newVar.usd_history = newVar.amount * price;
+            }
+          }
+
+          return newVar;
+        })
+    );
 
     const result = transactions.sort(function(a, b) {
       return b.timestamp - a.timestamp;
