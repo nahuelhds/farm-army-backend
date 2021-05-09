@@ -3,10 +3,17 @@
 const { performance } = require("perf_hooks");
 const express = require("express");
 const _ = require("lodash");
-const timeout = require('connect-timeout');
+const timeout = require("connect-timeout");
 
 module.exports = class Http {
-  constructor(priceOracle, platforms, balances, addressTransactions, tokenCollector, liquidityTokenCollector) {
+  constructor(
+    priceOracle,
+    platforms,
+    balances,
+    addressTransactions,
+    tokenCollector,
+    liquidityTokenCollector
+  ) {
     this.priceOracle = priceOracle;
     this.platforms = platforms;
     this.balances = balances;
@@ -18,12 +25,16 @@ module.exports = class Http {
   }
 
   start(port = 3000) {
-    this.app.use(timeout('25s'));
+    this.app.use(timeout("25s"));
 
     this.routes();
 
     this.app.listen(port, "127.0.0.1", () => {
-      console.log(`Listening at http://127.0.0.1:${port} @env:(${process.env.NODE_ENV ? process.env.NODE_ENV : 'n/a'})`);
+      console.log(
+        `Listening at http://127.0.0.1:${port} @env:(${
+          process.env.NODE_ENV ? process.env.NODE_ENV : "n/a"
+        })`
+      );
     });
   }
 
@@ -59,8 +70,11 @@ module.exports = class Http {
         res.json(await instance.getDetails(address, farmId));
 
         timer += performance.now();
-        console.log(`${new Date().toISOString()}: detail ${address} - ${farmId} - ${(timer / 1000).toFixed(3)} sec`);
-
+        console.log(
+          `${new Date().toISOString()}: detail ${address} - ${farmId} - ${(
+            timer / 1000
+          ).toFixed(3)} sec`
+        );
       } catch (e) {
         console.error(e);
         res.status(500).json({ message: e.message });
@@ -75,11 +89,15 @@ module.exports = class Http {
         res.json(await this.addressTransactions.getTransactions(address));
       } catch (e) {
         console.error(e);
-        res.status(500).json({message: e.message});
+        res.status(500).json({ message: e.message });
       }
 
       timer += performance.now();
-      console.log(`${new Date().toISOString()}: tranactions ${address} - ${(timer / 1000).toFixed(3)} sec`);
+      console.log(
+        `${new Date().toISOString()}: transactions ${address} - ${(
+          timer / 1000
+        ).toFixed(3)} sec`
+      );
     });
 
     app.get("/farms", async (req, res) => {
@@ -98,24 +116,30 @@ module.exports = class Http {
 
     app.get("/yield/:address", async (req, res) => {
       if (!req.query.p) {
-        res.status(400).json({error: 'missing "p" query parameter'});
+        res.status(400).json({ error: 'missing "p" query parameter' });
         return;
       }
 
       let timer = -performance.now();
       const { address } = req.params;
 
-      let platforms = _.uniq(req.query.p.split(',').filter(e => e.match(/^[\w]+$/g)));
+      let platforms = _.uniq(
+        req.query.p.split(",").filter(e => e.match(/^[\w]+$/g))
+      );
       if (platforms.length === 0) {
         res.json({});
         return;
       }
 
-      let functionAwaitsForPlatforms = this.platforms.getFunctionAwaitsForPlatforms(platforms, 'getYields', [address]);
+      let functionAwaitsForPlatforms = this.platforms.getFunctionAwaitsForPlatforms(
+        platforms,
+        "getYields",
+        [address]
+      );
 
       const awaits = await Promise.allSettled([...functionAwaitsForPlatforms]);
 
-      const response = {}
+      const response = {};
       awaits.forEach(v => {
         if (!v.value) {
           console.error(v);
@@ -135,7 +159,11 @@ module.exports = class Http {
       });
 
       timer += performance.now();
-      console.log(`${new Date().toISOString()}: yield ${address} - ${platforms.join(',')}: ${(timer / 1000).toFixed(3)} sec`);
+      console.log(
+        `${new Date().toISOString()}: yield ${address} - ${platforms.join(
+          ","
+        )}: ${(timer / 1000).toFixed(3)} sec`
+      );
 
       res.json(response);
     });
@@ -150,11 +178,15 @@ module.exports = class Http {
       ]);
 
       timer += performance.now();
-      console.log(`${new Date().toISOString()}: wallet ${address} - ${(timer / 1000).toFixed(3)} sec`);
+      console.log(
+        `${new Date().toISOString()}: wallet ${address} - ${(
+          timer / 1000
+        ).toFixed(3)} sec`
+      );
 
       res.json({
         tokens: tokens.value ? tokens.value : [],
-        liquidityPools: liquidityPools.value ? liquidityPools.value : [],
+        liquidityPools: liquidityPools.value ? liquidityPools.value : []
       });
     });
 
@@ -170,13 +202,19 @@ module.exports = class Http {
       ]);
 
       timer += performance.now();
-      console.log(`${new Date().toISOString()}: yield ${address}: ${(timer / 1000).toFixed(3)} sec`);
+      console.log(
+        `${new Date().toISOString()}: yield ${address}: ${(
+          timer / 1000
+        ).toFixed(3)} sec`
+      );
 
       const response = {};
 
       if (platformResults[0].status === "fulfilled") {
         response.wallet = platformResults[0].value;
-        response.balances = await this.balances.getBalancesFormFetched(response.wallet);
+        response.balances = await this.balances.getBalancesFormFetched(
+          response.wallet
+        );
       }
 
       if (platformResults[1].status === "fulfilled") {

@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 module.exports = class PriceCollector {
   constructor(cacheManager) {
@@ -8,30 +8,31 @@ module.exports = class PriceCollector {
 
     // init data
     setTimeout(async () => {
-      const prices = await this.cacheManager.get('price-collector-addresses');
+      const prices = await this.cacheManager.get("price-collector-addresses");
       if (prices) {
         this.prices = prices;
       }
 
-      const pricesSymbols = await this.cacheManager.get('price-collector-symbols');
+      const pricesSymbols = await this.cacheManager.get(
+        "price-collector-symbols"
+      );
       if (pricesSymbols) {
         this.pricesSymbols = pricesSymbols;
       }
-    }, 1)
+    }, 1);
   }
-
   add(address, price) {
     if (!address || !price) {
-      throw new Error(`Invalid price: ${JSON.stringify([address, price])}`)
+      throw new Error(`Invalid price: ${JSON.stringify([address, price])}`);
     }
 
-    if (!address || !address.startsWith('0x')) {
-      throw new Error(`Invalid address: ${address}`)
+    if (!address || !address.startsWith("0x")) {
+      throw new Error(`Invalid address: ${address}`);
     }
 
     if (price > 5000000000 || price < 0.0000000001) {
       // skipping invalid prices
-      console.error('price issues:', address, price)
+      console.error("price issues:", address, price);
       return;
     }
 
@@ -43,8 +44,12 @@ module.exports = class PriceCollector {
   }
 
   async save() {
-    await this.cacheManager.set('price-collector-addresses', this.prices, {ttl: 60 * 60 * 3});
-    await this.cacheManager.set('price-collector-symbols', this.pricesSymbols, {ttl: 60 * 60 * 3});
+    await this.cacheManager.set("price-collector-addresses", this.prices, {
+      ttl: 60 * 60 * 3
+    });
+    await this.cacheManager.set("price-collector-symbols", this.pricesSymbols, {
+      ttl: 60 * 60 * 3
+    });
   }
 
   getAddressMap() {
@@ -59,7 +64,7 @@ module.exports = class PriceCollector {
    * @returns {float|undefined}
    * @param addressOrTokens
    */
-  getPrice(...addressOrTokens) {
+  getPrice(timestamp, ...addressOrTokens) {
     for (let addressOrToken of addressOrTokens) {
       let context = addressOrToken.toLowerCase();
 
@@ -80,6 +85,6 @@ module.exports = class PriceCollector {
       }
     }
 
-    return undefined
+    return undefined;
   }
-}
+};

@@ -12,6 +12,7 @@ let tokenCollector;
 let addressTransactions;
 let liquidityTokenCollector;
 let priceCollector;
+let priceHistory;
 let farmFetcher;
 let contractAbiFetcher;
 
@@ -24,8 +25,9 @@ const Platforms = require("./platforms/platforms");
 const PriceOracle = require("./price_oracle");
 const TokenCollector = require("./token/token_collector");
 const PriceCollector = require("./token/price_collector");
-const cacheManagerInstance = require('cache-manager');
-const fsStore = require('cache-manager-fs-hash');
+const PriceHistory = require("./token/price_history");
+const cacheManagerInstance = require("cache-manager");
+const fsStore = require("cache-manager-fs-hash");
 const path = require("path");
 const AddressTransactions = require("./token/address_transactions");
 const LiquidityTokenCollector = require("./token/liquidity_token_collector");
@@ -75,8 +77,17 @@ module.exports = {
   Utils: require("./utils"),
 
   CONFIG: _.merge(
-    JSON.parse(fs.readFileSync(path.resolve(__dirname, "../config.json"), "utf8")),
-    fs.existsSync(path.resolve(__dirname, "../config.json.local")) ? JSON.parse(fs.readFileSync(path.resolve(__dirname, "../config.json.local"), "utf8")) : {}
+    JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../config.json"), "utf8")
+    ),
+    fs.existsSync(path.resolve(__dirname, "../config.json.local"))
+      ? JSON.parse(
+          fs.readFileSync(
+            path.resolve(__dirname, "../config.json.local"),
+            "utf8"
+          )
+        )
+      : {}
   ),
 
   getDatabase() {
@@ -101,7 +112,7 @@ module.exports = {
       this,
       this.getTokenCollector(),
       this.getLiquidityTokenCollector(),
-      this.getPriceCollector(),
+      this.getPriceCollector()
     ));
   },
 
@@ -111,28 +122,28 @@ module.exports = {
     }
 
     return (platforms = new Platforms(
-        [
-          this.getPancake(),
-          this.getSwamp(),
-          this.getBlizzard(),
-          this.getHyperjump(),
-          this.getSlime(),
-          this.getApeswap(),
-          this.getGoose(),
-          this.getCheese(),
-          this.getSpace(),
-          this.getSaltswap(),
-          this.getMdex(),
-          this.getPandayield(),
-          this.getWault(),
-          this.getCafeswap(),
-          this.getBelt(),
-          this.getKebab(),
-          this.getPolaris(),
-        ],
-        this.getCache(),
-        this.getPriceOracle(),
-        this.getTokenCollector(),
+      [
+        this.getPancake(),
+        this.getSwamp(),
+        this.getBlizzard(),
+        this.getHyperjump(),
+        this.getSlime(),
+        this.getApeswap(),
+        this.getGoose(),
+        this.getCheese(),
+        this.getSpace(),
+        this.getSaltswap(),
+        this.getMdex(),
+        this.getPandayield(),
+        this.getWault(),
+        this.getCafeswap(),
+        this.getBelt(),
+        this.getKebab(),
+        this.getPolaris()
+      ],
+      this.getCache(),
+      this.getPriceOracle(),
+      this.getTokenCollector()
     ));
   },
 
@@ -146,7 +157,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -160,7 +171,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -174,7 +185,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -188,7 +199,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -202,7 +213,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -216,7 +227,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -230,7 +241,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -244,7 +255,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -258,7 +269,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -272,7 +283,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -286,7 +297,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -300,7 +311,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -314,7 +325,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -328,7 +339,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -342,7 +353,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -356,7 +367,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -370,7 +381,7 @@ module.exports = {
       this.getPriceOracle(),
       this.getTokenCollector(),
       this.getFarmFetcher(),
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -390,10 +401,11 @@ module.exports = {
     return (addressTransactions = new AddressTransactions(
       this.getPlatforms(),
       this.getUserCacheManager(),
-      module.exports.CONFIG['BSCSCAN_API_KEY'],
+      module.exports.CONFIG["BSCSCAN_API_KEY"],
       this.getLiquidityTokenCollector(),
       this.getTokenCollector(),
       this.getPriceCollector(),
+      this.getPriceHistory()
     ));
   },
 
@@ -403,7 +415,7 @@ module.exports = {
     }
 
     return (liquidityTokenCollector = new LiquidityTokenCollector(
-      this.getCacheManager(),
+      this.getCacheManager()
     ));
   },
 
@@ -412,7 +424,7 @@ module.exports = {
       return cacheManager;
     }
 
-    const cacheDir = path.resolve(__dirname, '../var/cache')
+    const cacheDir = path.resolve(__dirname, "../var/cache");
 
     const diskCache = cacheManagerInstance.caching({
       store: fsStore,
@@ -420,11 +432,11 @@ module.exports = {
         path: cacheDir,
         ttl: 60 * 60 * 24 * 30,
         subdirs: true,
-        zip: false,
+        zip: false
       }
     });
 
-    return cacheManager = diskCache;
+    return (cacheManager = diskCache);
   },
 
   getUserCacheManager() {
@@ -432,7 +444,7 @@ module.exports = {
       return cacheManager;
     }
 
-    const cacheDir = path.resolve(__dirname, '../var/cache')
+    const cacheDir = path.resolve(__dirname, "../var/cache");
 
     const diskCache = cacheManagerInstance.caching({
       store: fsStore,
@@ -440,11 +452,11 @@ module.exports = {
         path: cacheDir,
         ttl: 60 * 60 * 3,
         subdirs: true,
-        zip: false,
+        zip: false
       }
     });
 
-    return cacheManager = diskCache;
+    return (cacheManager = diskCache);
   },
 
   getBalances() {
@@ -455,7 +467,7 @@ module.exports = {
     return (balances = new Balances(
       this.getCache(),
       this.getPriceOracle(),
-      this.getTokenCollector(),
+      this.getTokenCollector()
     ));
   },
 
@@ -473,6 +485,14 @@ module.exports = {
     }
 
     return (priceCollector = new PriceCollector(this.getCacheManager()));
+  },
+
+  getPriceHistory() {
+    if (!priceHistory) {
+      priceHistory = new PriceHistory(this.getCacheManager());
+    }
+
+    return priceHistory;
   },
 
   getDb() {
@@ -499,7 +519,7 @@ module.exports = {
       this.getBalances(),
       this.getAddressTransactions(),
       this.getTokenCollector(),
-      this.getLiquidityTokenCollector(),
+      this.getLiquidityTokenCollector()
     ));
   },
 
@@ -508,9 +528,7 @@ module.exports = {
       return farmFetcher;
     }
 
-    return (farmFetcher = new FarmFetcher(
-      this.getContractAbiFetcher(),
-    ));
+    return (farmFetcher = new FarmFetcher(this.getContractAbiFetcher()));
   },
 
   getContractAbiFetcher() {
@@ -519,8 +537,8 @@ module.exports = {
     }
 
     return (contractAbiFetcher = new ContractAbiFetcher(
-      module.exports.CONFIG['BSCSCAN_API_KEY'],
-      this.getCacheManager(),
+      module.exports.CONFIG["BSCSCAN_API_KEY"],
+      this.getCacheManager()
     ));
-  },
+  }
 };

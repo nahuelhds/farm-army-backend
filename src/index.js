@@ -1,12 +1,12 @@
-"use strict";
-
 const _ = require("lodash");
 
-const Utils = require("./services").Utils;
+const { Utils } = require("./services");
 const services = require("./services");
 
 async function farmUpdater() {
-  await Promise.all(services.getPlatforms().getFunctionAwaits('getFarms', [true]));
+  await Promise.all(
+    services.getPlatforms().getFunctionAwaits("getFarms", [true])
+  );
 }
 
 async function priceUpdater() {
@@ -20,7 +20,7 @@ setTimeout(async () => {
     await priceUpdater();
   }, 1000 * 60 * 5);
 
-  console.log('application init started')
+  console.log("application init started");
   await priceUpdater();
 
   console.log("\x1b[32m" + "price init done" + "\x1b[0m");
@@ -43,4 +43,4 @@ setInterval(async () => {
   ]);
 }, 1000 * 60 * 4);
 
-services.getHttp().start()
+services.getHttp().start();

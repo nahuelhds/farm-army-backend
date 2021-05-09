@@ -52,4 +52,5 @@ Thumbs.db
 .db.db
 .db.db.*
 
+var/cache/*
 

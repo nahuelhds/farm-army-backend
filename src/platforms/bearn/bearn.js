@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const Web3EthContract = require("web3-eth-contract");
 const BigNumber = require("bignumber.js");
-const request = require("async-request");
+const fetch = require("node-fetch");
 const Utils = require("../../utils");
 
 const POOLCHEF_ABI = require('./abi/poolchef.json')
@@ -100,17 +100,17 @@ module.exports = class bearn {
     }
 
     const [responseVaults, responsePools] = await Promise.all([
-      request("https://api.bdollar.fi/api/bvault/get-vaults"),
-      request("https://api.bearn.fi/v1/general/pools"),
+      fetch("https://api.bdollar.fi/api/bvault/get-vaults").then(res => res.json()),
+      fetch("https://api.bearn.fi/v1/general/pools").then(res => res.json()),
     ])
 
     const vaultsInfo = {};
-    Object.values(JSON.parse(responseVaults.body).data.vaultInfos).forEach(v => {
+    Object.values(responseVaults.data.vaultInfos).forEach(v => {
       vaultsInfo[v.pid] = v;
     });
 
     const poolsInfo = {};
-    Object.values(JSON.parse(responsePools.body).data.pools.bsc).forEach(v => {
+    Object.values(responsePools.data.pools).forEach(v => {
       poolsInfo[v.pid] = v;
     });
 
