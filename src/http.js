@@ -100,6 +100,25 @@ module.exports = class Http {
       );
     });
 
+    app.get("/history/:address", async (req, res) => {
+      let timer = -performance.now();
+      const { address } = req.params;
+
+      try {
+        res.json(await this.addressTransactions.getHistory(address));
+      } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: e.message });
+      }
+
+      timer += performance.now();
+      console.log(
+        `${new Date().toISOString()}: history ${address} - ${(
+          timer / 1000
+        ).toFixed(3)} sec`
+      );
+    });
+
     app.get("/farms", async (req, res) => {
       const items = await Promise.all(
         await this.platforms.getFunctionAwaits("getFarms")
