@@ -31,9 +31,12 @@ module.exports = class AddressTransactions {
   groupByHash(txs) {
     return txs.reduce((map, tx) => {
       if (!map[tx.hash]) {
-        map[tx.hash] = [];
+        map[tx.hash] = {
+          type: null,
+          txs: []
+        };
       }
-      map[tx.hash].push(tx);
+      map[tx.hash].txs.push(tx);
       return map;
     }, {});
   }
@@ -48,8 +51,17 @@ module.exports = class AddressTransactions {
   addTxToWallet(walletCollector, tx) {
     if (tx.usd_history) {
       walletCollector.usd += tx.usd_history;
+    } else if (!isLpToken(tx)) {
+      this.addUnknownPrice(walletCollector, tx);
     }
     walletCollector.txs.push(tx);
+  }
+
+  addUnknownPrice(walletCollector, tx) {
+    if (!walletCollector.unknownPrice[tx.symbol]) {
+      walletCollector.unknownPrice[tx.symbol] = [];
+    }
+    walletCollector.unknownPrice[tx.symbol].push(tx);
   }
 
   addTokenToWallet(walletCollector, tx) {
@@ -183,6 +195,7 @@ module.exports = class AddressTransactions {
     const initialState = {
       wallet: {
         usd: 0,
+        unknownPrice: {},
         token: {},
         lpToken: {},
         lpTokenBuild: {},
@@ -192,49 +205,51 @@ module.exports = class AddressTransactions {
       swap: {},
       vault: {},
       rewards: { amount: 0, txs: {} },
-      unknown: { amount: 0, txs: {} }
+      unknown: { amount: 0, txs: {} },
+      groupedTxs: []
     };
     const txsByHash = this.groupByHash(transactions);
     return Object.values(txsByHash).reduce((map, groupedTxs) => {
-      const txType = parseType(groupedTxs);
-      switch (txType) {
+      groupedTxs.type = parseType(groupedTxs.txs);
+      switch (groupedTxs.type) {
         case TX_TYPE.TOKEN:
-          this.addTokenToWallet(map.wallet, groupedTxs[0]);
+          this.addTokenToWallet(map.wallet, groupedTxs.txs[0]);
           break;
         case TX_TYPE.POOL_BUILD:
-          this.addPoolBuildToWallet(map.wallet, groupedTxs);
+          this.addPoolBuildToWallet(map.wallet, groupedTxs.txs);
           break;
         case TX_TYPE.POOL_UNSTAKE:
-          this.addPoolUnstakeToWallet(map.wallet, groupedTxs);
+          this.addPoolUnstakeToWallet(map.wallet, groupedTxs.txs);
           break;
         case TX_TYPE.LP_TOKEN_BUILD:
-          this.addLPTokenBuildToWallet(map.wallet, groupedTxs);
+          this.addLPTokenBuildToWallet(map.wallet, groupedTxs.txs);
           break;
         case TX_TYPE.LP_TOKEN:
-          this.addLPTokenToWallet(map.wallet, groupedTxs[0]);
+          this.addLPTokenToWallet(map.wallet, groupedTxs.txs[0]);
           break;
         case TX_TYPE.LP_TOKEN_VAULT:
-          this.addToVault(map.vault, groupedTxs[0]);
+          this.addToVault(map.vault, groupedTxs.txs[0]);
           break;
         case TX_TYPE.REWARD:
           console.warn(
             "These transactions should be something like a reward",
-            groupedTxs
+            groupedTxs.txs
           );
           break;
         case TX_TYPE.LP_UNSTAKE:
-          this.addLPUnstakeToWallet(map.wallet, groupedTxs);
+          this.addLPUnstakeToWallet(map.wallet, groupedTxs.txs);
           break;
         case TX_TYPE.SWAP:
-          this.addTokenToWallet(map.wallet, groupedTxs[0]);
-          this.addTokenToWallet(map.wallet, groupedTxs[1]);
-          this.addSwap(map.swap, groupedTxs[0], groupedTxs[1]);
+          this.addTokenToWallet(map.wallet, groupedTxs.txs[0]);
+          this.addTokenToWallet(map.wallet, groupedTxs.txs[1]);
+          this.addSwap(map.swap, groupedTxs.txs[0], groupedTxs.txs[1]);
           break;
         case TX_TYPE.UNKNOWN:
         default:
-          console.warn("Uknown type for transactions", groupedTxs);
+          console.warn("Uknown type for transactions", groupedTxs.txs);
           break;
       }
+      map.groupedTxs.push(groupedTxs);
       return map;
     }, initialState);
   }
